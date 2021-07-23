@@ -1,0 +1,37 @@
+"","year","Clinvar","Count"
+"1",2015,"Benign",2201
+"2",2015,"Likely benign",1718
+"3",2015,"VUS",9025
+"4",2015,"Likely pathogenic",1390
+"5",2015,"Pathogenic",12394
+"6",2015,"Total",26728
+"7",2016,"Benign",3819
+"8",2016,"Likely benign",2947
+"9",2016,"VUS",24727
+"10",2016,"Likely pathogenic",3519
+"11",2016,"Pathogenic",16391
+"12",2016,"Total",51403
+"13",2017,"Benign",6512
+"14",2017,"Likely benign",6193
+"15",2017,"VUS",53782
+"16",2017,"Likely pathogenic",4459
+"17",2017,"Pathogenic",16822
+"18",2017,"Total",87768
+"19",2018,"Benign",9080
+"20",2018,"Likely benign",7394
+"21",2018,"VUS",85280
+"22",2018,"Likely pathogenic",8231
+"23",2018,"Pathogenic",19198
+"24",2018,"Total",129183
+"25",2019,"Benign",10317
+"26",2019,"Likely benign",8680
+"27",2019,"VUS",126213
+"28",2019,"Likely pathogenic",10698
+"29",2019,"Pathogenic",19687
+"30",2019,"Total",175595
+"31",2020,"Benign",25699
+"32",2020,"Likely benign",16371
+"33",2020,"VUS",227313
+"34",2020,"Likely pathogenic",14726
+"35",2020,"Pathogenic",22486
+"36",2020,"Total",306595

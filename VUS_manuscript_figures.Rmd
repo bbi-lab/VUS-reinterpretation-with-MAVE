@@ -1,0 +1,319 @@
+---
+title: "Ambry_paper_figures"
+output: html_document
+---
+
+This R markdown reads the provided CSV files and generates the figures used in the manuscript.
+First, set the working directory to the folder where the file downloads were saved:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "USER DEFINED PATH/Figure_files")
+```
+
+Imports for figures:
+```{r}
+library(tidyr)
+library(stringr)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(ggfortify)
+library(ggpubr)
+library(Spar)
+```
+
+Read all of the figure data files into R:
+```{r}
+Clinvar_annual_missense_count = read.csv("Clinvar_annual_missense_count.csv")
+Total_clinvar_missense = read.csv("Total_clinvar_missense.csv")
+BRCA1_SGE_data = read.csv("BRCA1_SGE_data.csv")
+TP53_full_clinvar_w_LP_LB = read.csv("TP53_full_clinvar_w_LP_LB.csv")
+TP53_etoposide = read.csv("TP53_etoposide.csv")
+TP53_WT_nutlin = read.csv("TP53_WT_nutlin.csv")
+TP53_null_nutlin = read.csv("TP53_null_nutlin.csv")
+TP53_DN_reporter = read.csv("TP53_DN_reporter.csv")
+PTEN_clinvar = read.csv("PTEN_clinvar.csv")
+PTEN_activity = read.csv("PTEN_activity.csv")
+PTEN_abundance = read.csv("PTEN_abundance_2.csv")
+BRCA1_before = read.csv("BRCA1_before.csv")
+BRCA1_after_detail = read.csv("BRCA1_after_detail.csv")
+TP53_before = read.csv("TP53_before.csv")
+TP53_after_detail = read.csv("TP53_after_detail.csv")
+PTEN_before = read.csv("PTEN_before.csv")
+PTEN_after_detail = read.csv("PTEN_after_detail.csv")
+ACMG73_B_oddspath = read.csv("ACMG73_B_oddspath.csv")
+ACMG73_P_oddspath = read.csv("ACMG73_P_oddspath.csv")
+```
+
+Figure 1:
+```{r}
+#Generate a donut plot of ClinVar variant classifications
+#Clinvar_missense_2 is a dataframe containing ClinVar variant classifications (pathogenic, likely pathogenic, VUS, likely benign, benign) and their counts
+#Compute percentages
+Clinvar_missense_2 = Total_clinvar_missense[-c(5),]
+Clinvar_missense_2$fraction = Clinvar_missense_2$count / sum(Clinvar_missense_2$count)
+
+#Compute the cumulative percentages (top of each rectangle)
+Clinvar_missense_2$ymax = cumsum(Clinvar_missense_2$fraction)
+
+#Compute the bottom of each rectangle
+Clinvar_missense_2$ymin = c(0, head(Clinvar_missense_2$ymax, n=-1))
+
+#Order the legend entries:
+Clinvar_missense_2$clinvar <- factor(Clinvar_missense_2$clinvar, levels = c("Benign", "Likely benign", "Likely pathogenic", "Pathogenic" , "VUS"))
+
+#Make the donut plot
+Clinvar_missense_plot = ggplot(Clinvar_missense_2, aes(ymax=ymax, ymin=ymin, xmax=7, xmin=6, fill=clinvar)) + geom_rect() + coord_polar(theta="y")+ xlim(c(3, 7)) + theme_void() + scale_color_manual(values = c('Pathogenic' = 'firebrick3', 'Likely pathogenic' = 'coral', 'Benign' = 'royalblue3', 'Likely benign' = 'steelblue1', 'VUS' = 'grey50'))+ scale_fill_manual(values = c('Pathogenic' = 'firebrick3', 'Likely pathogenic' = 'coral', 'Benign' = 'royalblue3', 'Likely benign' = 'steelblue1', 'VUS' = 'grey50')) + theme(legend.position = c(0.53, 0.50), legend.title = element_blank(), legend.text = element_text(size = 20), legend.key.size = unit(3, 'lines'))
+
+#Make the line plot for annual missense totals
+missense_line = ggplot(Clinvar_annual_missense_count, aes(x=year, y=Count, group=Clinvar, color = Clinvar)) + geom_line(size=2)+ scale_color_manual(values = c('Pathogenic' = 'firebrick3', 'Likely pathogenic' = 'coral', 'Benign' = 'royalblue3', 'Likely benign' = 'steelblue1', 'VUS' = 'grey50', 'Total' = 'white'))+ geom_point(size=4) + theme_classic() + theme(axis.text=element_text(size=24),axis.title=element_text(size=20)) + theme(legend.position = "none") + labs(x = "Year", y = "Count (thousands)") + scale_y_continuous(labels = function(l) {trans = l / 1000})
+
+#generate a figure with both Clinvar missense plots:
+missense_fig = ggarrange(Clinvar_missense_plot, missense_line, nrow = 1, ncol = 2, labels = c("A", "B"), font.label = list(size = 28))
+#missense_fig
+ggsave("Figure_1.pdf", plot = missense_fig, dpi = 300, height = 7, width = 14)
+
+```
+
+Figure 3:
+```{r}
+#Clinvar validation and  nonsense/synonymous histograms for each MAVE:
+#BRCA plots:
+#
+#define the variants for clinvar validation:
+Clinvar_B_P=BRCA1_SGE_data[BRCA1_SGE_data$clinvar %in% c("Benign", "Likely benign", "Likely pathogenic", "Pathogenic/Likely pathogenic", "Pathogenic"),]
+
+#clinvar validitaion histogram:
+BRCA1_SGE_clinvar = ggplot(Clinvar_B_P, aes(x=function.score.mean)) + geom_histogram(aes( color=clinvar, fill = clinvar)) + scale_color_manual(values = c('Benign' = 'royalblue3', 'Likely benign' = 'steelblue1','Likely pathogenic' = 'coral', 'Pathogenic' = 'firebrick3','Pathogenic/Likely pathogenic' = 'firebrick3'))+ scale_fill_manual(values = c('Benign' = 'royalblue3', 'Likely benign' = 'steelblue1', 'Likely pathogenic' = 'coral', 'Pathogenic' = 'firebrick3', 'Pathogenic/Likely pathogenic' = 'firebrick3'))  + theme_classic() + theme(legend.position = "none")+ labs(x = "BRCA1 Function Score", y = "SNVs")
+#BRCA1_SGE_clinvar
+
+#pull only nonsense and synonymous variants:
+BRCA1_N_S = BRCA1_SGE_data[BRCA1_SGE_data$consequence %in% c("Synonymous", "Nonsense"),]
+BRCA1_N = BRCA1_N_S[BRCA1_N_S$consequence %in% c("Nonsense"),]
+BRCA1_S = BRCA1_N_S[BRCA1_N_S$consequence %in% c("Synonymous"),]
+
+#generate nonsense and synonymous histogram:
+BRCA1_N_S_hist = ggplot(BRCA1_N_S, aes(x=function.score.mean)) + geom_histogram(aes(color=consequence, fill = consequence)) + theme_classic() + theme(legend.position = "none") + labs(x = "Function Score", y = "Density") + scale_color_manual(values = c('Synonymous' = 'forestgreen', 'Nonsense' = 'mediumorchid2')) + scale_fill_manual(values = c('Synonymous' = 'forestgreen', 'Nonsense' = 'mediumorchid2')) + annotate("rect", xmin = -Inf, xmax = quantile(BRCA1_N$function.score.mean, .95), ymin = 0, ymax = Inf, alpha = .15, fill = 'mediumorchid2') +  annotate("rect", xmin = quantile(BRCA1_S$function.score.mean, .05), xmax = Inf , ymin = 0, ymax = Inf, alpha = .15, fill = 'forestgreen') + geom_vline(xintercept = quantile(BRCA1_S$function.score.mean, .05), lty=2, color = 'forestgreen', size = 1) + geom_vline(xintercept = quantile(BRCA1_N$function.score.mean, .95), lty=2, color = 'mediumorchid2', size = 1) + labs(x = "BRCA1 Function Score", y = "SNVs")
+#BRCA1_N_S_hist
+
+#TP53 plots:
+#
+#Genereate TP53 clinvar validation histogram for each MAVE:
+Etoposide = ggplot(TP53_full_clinvar_w_LP_LB, aes(x=Etoposide_score)) + geom_histogram(aes(color = clinvar, fill = clinvar)) + scale_color_manual(values = c('P' = 'firebrick3', 'LP' = 'coral', 'B' = 'royalblue3', 'LB' = 'steelblue1'))+ scale_fill_manual(values = c('P' = 'firebrick3', 'LP' = 'coral', 'B' = 'royalblue3', 'LB' = 'steelblue1'))+ theme_classic()+ theme(legend.position = "none")  + labs(x = "TP53 LOF Etoposide Score", y = "SNVs")
+
+#Etoposide_N_S = subset(mapped_single_nt_mavedb_broad_tp53_scores_A549_p53NULL_Etoposide_Z_score,substr(p_variant,nchar#(p_variant)-1,nchar(p_variant)) %in% c("B","Z"))
+
+LOF_nutlin = ggplot(TP53_full_clinvar_w_LP_LB, aes(x=Null_nutlin_score)) + geom_histogram(aes(color = clinvar, fill = clinvar)) + scale_color_manual(values = c('P' = 'firebrick3', 'LP' = 'coral', 'B' = 'royalblue3', 'LB' = 'steelblue1'))+ scale_fill_manual(values = c('P' = 'firebrick3', 'LP' = 'coral', 'B' = 'royalblue3', 'LB' = 'steelblue1'))+ theme_classic()+ theme(legend.position = "none") + labs(x = "TP53 LOF Nutlin-3 Score", y = "SNVs")
+
+DN_nutlin = ggplot(TP53_full_clinvar_w_LP_LB, aes(x=WT_nutlin_score)) + geom_histogram(aes(color = clinvar, fill = clinvar)) + scale_color_manual(values = c('P' = 'firebrick3', 'LP' = 'coral', 'B' = 'royalblue3', 'LB' = 'steelblue1'))+ scale_fill_manual(values = c('P' = 'firebrick3', 'LP' = 'coral', 'B' = 'royalblue3', 'LB' = 'steelblue1'))+ theme_classic()+ theme(legend.position = "none") + labs(x = "TP53 DN Nutlin-3 Score", y = "SNVs")
+
+DN_reporter = ggplot(TP53_full_clinvar_w_LP_LB, aes(x=DN_reporter_score)) + geom_histogram(aes(color = clinvar, fill = clinvar)) + scale_color_manual(values = c('P' = 'firebrick3', 'LP' = 'coral', 'B' = 'royalblue3', 'LB' = 'steelblue1'))+ scale_fill_manual(values = c('P' = 'firebrick3', 'LP' = 'coral', 'B' = 'royalblue3', 'LB' = 'steelblue1'))+ theme_classic()+ theme(legend.position = "none")+ labs(x = "TP53 DN Reporter Score", y = "SNVs")
+
+#Generate TP53 nonsense and synonymous histogram for each MAVE:
+Etoposide_N_S = subset(TP53_etoposide,grepl("^.+(Z|B)$",p_variant))
+Etoposide_N_S$consequence = grepl(pattern = "(Z)$", Etoposide_N_S$p_variant)
+Etoposide_N_S$consequence = gsub("TRUE", "Nonsense", Etoposide_N_S$consequence)
+Etoposide_N_S$consequence = gsub("FALSE", "Synonymous", Etoposide_N_S$consequence)
+#just synon:
+Eto_synon = subset(Etoposide_N_S, grepl(pattern="Synonymous",consequence))
+#just nonsense:
+Eto_non = subset(Etoposide_N_S, grepl(pattern="Nonsense",consequence))
+Eto_non = Eto_non %>% dplyr::filter(Position > 44 & Position < 289)
+Etoposide_N_S = Etoposide_N_S %>% arrange(desc(consequence))
+Etoposide_N_S$consequence = factor(Etoposide_N_S$consequence, levels = unique(Etoposide_N_S$consequence))
+
+WT_nutlin_N_S = subset(TP53_WT_nutlin,grepl("^.+(Z|B)$",Allele))
+WT_nutlin_N_S$consequence = grepl(pattern = "(Z)$", WT_nutlin_N_S$Allele)
+WT_nutlin_N_S$consequence = gsub("TRUE", "Nonsense", WT_nutlin_N_S$consequence)
+WT_nutlin_N_S$consequence = gsub("FALSE", "Synonymous", WT_nutlin_N_S$consequence)
+#just synon:
+WT_n_synon = subset(WT_nutlin_N_S, grepl(pattern="Synonymous",consequence))
+#just nonsense:
+WT_n_non = subset(WT_nutlin_N_S, grepl(pattern="Nonsense",consequence))
+WT_n_non = WT_n_non %>% dplyr::filter(Position > 44 & Position < 289)
+WT_nutlin_N_S = WT_nutlin_N_S %>% arrange(desc(consequence))
+WT_nutlin_N_S$consequence = factor(WT_nutlin_N_S$consequence, levels = unique(WT_nutlin_N_S$consequence))
+
+null_nutlin_N_S = subset(TP53_null_nutlin,grepl("^.+(Z|B)$",Allele))
+null_nutlin_N_S$consequence = grepl(pattern = "(Z)$", null_nutlin_N_S$Allele)
+null_nutlin_N_S$consequence = gsub("TRUE", "Nonsense", null_nutlin_N_S$consequence)
+null_nutlin_N_S$consequence = gsub("FALSE", "Synonymous", null_nutlin_N_S$consequence)
+#just synon:
+null_n_synon = subset(null_nutlin_N_S, grepl(pattern="Synonymous",consequence))
+#just nonsense:
+null_n_non = subset(null_nutlin_N_S, grepl(pattern="Nonsense",consequence))
+null_n_non = null_n_non %>% dplyr::filter(Position > 44 & Position < 289)
+null_nutlin_N_S = null_nutlin_N_S %>% arrange(desc(consequence))
+null_nutlin_N_S$consequence = factor(null_nutlin_N_S$consequence, levels = unique(null_nutlin_N_S$consequence))
+
+DN_reporter_N_S = subset(TP53_DN_reporter,grepl("^.+(Z|B)$",p_variant))
+DN_reporter_N_S$consequence = grepl(pattern = "(Z)$", DN_reporter_N_S$p_variant)
+DN_reporter_N_S$consequence = gsub("TRUE", "Nonsense", DN_reporter_N_S$consequence)
+DN_reporter_N_S$consequence = gsub("FALSE", "Synonymous", DN_reporter_N_S$consequence)
+#just synon:
+DN_rep_synon = subset(DN_reporter_N_S, grepl(pattern="Synonymous",consequence))
+#just nonsense:
+DN_rep_non = subset(DN_reporter_N_S, grepl(pattern="Nonsense",consequence))
+DN_rep_non = DN_rep_non %>% drop_na(DN_reporter_score)
+DN_rep_non = DN_rep_non %>% dplyr::filter(POS > 44 & POS < 289)
+DN_reporter_N_S = DN_reporter_N_S %>% arrange(desc(consequence))
+DN_reporter_N_S$consequence = factor(DN_reporter_N_S$consequence, levels = unique(DN_reporter_N_S$consequence))
+
+#PTEN plots:
+#
+PTEN_activity_clinvar = ggplot(PTEN_clinvar, aes(Fitness_score)) + geom_histogram(aes(color=Clinvar, fill = Clinvar)) + scale_color_manual(values = c('Benign' = 'royalblue3', 'Likely benign' = 'steelblue1','Likely pathogenic' = 'coral', 'Pathogenic' = 'firebrick3'))+ scale_fill_manual(values = c('Benign' = 'royalblue3', 'Likely benign' = 'steelblue1','Likely pathogenic' = 'coral', 'Pathogenic' = 'firebrick3'))+ theme_classic()+ theme(legend.position = "none") + labs(x = "PTEN Activity Score", y = "SNVs")
+#PTEN_activity_clinvar
+
+PTEN_abundance_clinvar = ggplot(PTEN_clinvar, aes(Abundance_score)) + geom_histogram(aes(color=Clinvar, fill = Clinvar)) + scale_color_manual(values = c('Benign' = 'royalblue3', 'Likely benign' = 'steelblue1','Likely pathogenic' = 'coral', 'Pathogenic' = 'firebrick3'))+ scale_fill_manual(values = c('Benign' = 'royalblue3', 'Likely benign' = 'steelblue1','Likely pathogenic' = 'coral', 'Pathogenic' = 'firebrick3')) + theme_classic()+ theme(legend.position = "none")+ labs(x = "PTEN Abundance Score", y = "SNVs")
+#PTEN_abundance_clinvar
+
+#Matreyek nonsense and synonymous
+PTEN_abun_N_S = PTEN_abundance[PTEN_abundance$class %in% c("synonymous", "nonsense"),]
+PTEN_abun_N_S = PTEN_abun_N_S[!str_detect(PTEN_abun_N_S$score, '([A-Za-z])'), ]
+PTEN_abun_N_S = PTEN_abun_N_S[!str_detect(PTEN_abun_N_S$score, '\\.$'), ]
+PTEN_abun_N_S$Abundance_score = as.numeric(PTEN_abun_N_S$score)
+#just nonsense:
+PTEN_abun_N = PTEN_abun_N_S[PTEN_abun_N_S$class %in% c("nonsense"),]
+PTEN_abun_N = PTEN_abun_N %>% dplyr::filter(position < 350)
+#just synonymous:
+PTEN_abun_S = PTEN_abun_N_S[PTEN_abun_N_S$class %in% c("synonymous"),]
+#Mighell nonsense and synonymous
+PTEN_act_N_S = PTEN_activity[PTEN_activity$Type %in% c("WT", "nonsense"),]
+PTEN_act_N_S = PTEN_act_N_S[!str_detect(PTEN_act_N_S$Cum_score, '([A-Za-z])'), ]
+PTEN_act_N_S = PTEN_act_N_S[!str_detect(PTEN_act_N_S$Cum_score, '\\.$'), ]
+PTEN_act_N_S$Cum_score = as.numeric(PTEN_act_N_S$Cum_score)
+#just nonsense:
+PTEN_act_N = PTEN_act_N_S[PTEN_act_N_S$Type %in% c("nonsense"),]
+PTEN_act_N = PTEN_act_N %>% dplyr::filter(position < 350)
+#just synonymous:
+PTEN_act_S = PTEN_act_N_S[PTEN_act_N_S$Type %in% c("WT"),]
+
+PTEN_abun_N_S_hist = ggplot(PTEN_abun_N_S, aes(x=score)) + geom_histogram(aes(color=class, fill = class)) + theme_classic() + theme(legend.position = "none") + labs(x = "PTEN Abundance Score", y = "SNVs") + scale_color_manual(values = c('synonymous' = 'forestgreen', 'nonsense' = 'mediumorchid2')) + scale_fill_manual(values = c('synonymous' = 'forestgreen', 'nonsense' = 'mediumorchid2')) + annotate("rect", xmin = -Inf, xmax = quantile(PTEN_abun_N$score, .95), ymin = 0, ymax = Inf, alpha = .15, fill = 'mediumorchid2') +  annotate("rect", xmin = quantile(PTEN_abun_S$score, .05), xmax = Inf , ymin = 0, ymax = Inf, alpha = .15, fill = 'forestgreen') + geom_vline(xintercept = quantile(PTEN_abun_S$score, .05), lty=2, color = 'forestgreen', size = 1) + geom_vline(xintercept = quantile(PTEN_abun_N$score, .95), lty=2, color = 'mediumorchid2', size = 1)
+ #PTEN_abun_N_S_hist 
+
+
+PTEN_act_N_S_hist = ggplot(PTEN_act_N_S, aes(x=Cum_score)) + geom_histogram(aes(color=Type, fill = Type)) + theme_classic() + theme(legend.position = "none") + labs(x = "PTEN Activity Score", y = "SNVs") + scale_color_manual(values = c('synonymous' = 'forestgreen', 'nonsense' = 'mediumorchid2')) + scale_fill_manual(values = c('synonymous' = 'forestgreen', 'nonsense' = 'mediumorchid2')) + annotate("rect", xmin = -Inf, xmax = quantile(PTEN_act_N$Cum_score, .95), ymin = 0, ymax = Inf, alpha = .15, fill = 'mediumorchid2') +  annotate("rect", xmin = -1.2, xmax = Inf , ymin = 0, ymax = Inf, alpha = .15, fill = 'forestgreen') + geom_vline(xintercept = -1.2, lty=2, color = 'forestgreen', size = 1) + geom_vline(xintercept = quantile(PTEN_act_N$Cum_score, .95), lty=2, color = 'mediumorchid2', size = 1)
+ #PTEN_act_N_S_hist 
+
+#make the figure with above plots:
+Figure_3 = ggarrange(BRCA1_SGE_clinvar,BRCA1_N_S_hist, Etoposide,Etoposide_N_S_hist, LOF_nutlin,null_nut_N_S_hist, DN_nutlin,WT_nut_N_S_hist, DN_reporter,DN_rep_N_S_hist, PTEN_abundance_clinvar,PTEN_abun_N_S_hist, PTEN_activity_clinvar, PTEN_act_N_S_hist , nrow = 7, ncol = 2, labels = c('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'))
+Figure_3
+ggsave("Figure_3.pdf", plot = Full_Figure_1.2, dpi = 300, width = 6, height = 10, units = c("in"))
+
+```
+
+Figure 4:
+```{r}
+#Generate classification donut plots:
+#
+#BRCA1:
+# Compute percentages:
+BRCA1_before$fraction = BRCA1_before$Count / sum(BRCA1_before$Count)
+BRCA1_after_detail$fraction = BRCA1_after_detail$Count / sum(BRCA1_after_detail$Count)
+
+# Compute the cumulative percentages (top of each rectangle):
+BRCA1_before$ymax = cumsum(BRCA1_before$fraction)
+BRCA1_after_detail$ymax = cumsum(BRCA1_after_detail$fraction)
+
+# Compute the bottom of each rectangle:
+BRCA1_before$ymin = c(0, head(BRCA1_before$ymax, n=-1))
+BRCA1_after_detail$ymin = c(0, head(BRCA1_after_detail$ymax, n=-1))
+
+#order the legend entries same as dataframes:
+BRCA1_before$Classification <- factor(BRCA1_before$Classification, levels = unique(BRCA1_before$Classification))
+BRCA1_after_detail$Classification <- factor(BRCA1_after_detail$Classification, levels = unique(BRCA1_after_detail$Classification))
+
+BRCA1_before_plot = ggplot(BRCA1_before, aes(ymax=ymax, ymin=ymin, xmax=8, xmin=7, fill = Classification)) +  geom_rect() + coord_polar(theta="y")+ xlim(c(3, 8)) + theme_void() + scale_color_manual(values = c('B (60)' = 'royalblue3', 'LB (16)' = 'steelblue1', 'VUS (110)' = 'grey50','LP (44)' = 'coral','P (57)' = 'firebrick3')) + scale_fill_manual(values = c('B (60)' = 'royalblue3', 'LB (16)' = 'steelblue1', 'VUS (110)' = 'grey50','LP (44)' = 'coral','P (57)' = 'firebrick3')) + theme(legend.position = c(0.51, 0.5))+ theme(legend.title = element_blank())+ theme(legend.text = element_text(size = 25)) + ggtitle("BRCA1 classifications") + theme(plot.title = element_text(size=25, face="italic", hjust = 0.5, vjust = -3))
+
+BRCA1_after_deets_plot = ggplot(BRCA1_after_detail, aes(ymax=ymax, ymin=ymin, xmax=8, xmin=7, fill = Classification)) +  geom_rect() + coord_polar(theta="y")+ xlim(c(3, 8)) + theme_void() + scale_color_manual(values = c('B (60)' = 'royalblue3', 'LB (16)' = 'steelblue1', 'VUS to LB (49)' = 'steelblue4', 'VUS (56)' = 'grey50', 'VUS to LP (5)' = 'coral3', 'LP (44)' = 'coral', 'P (57)' = 'firebrick3')) + scale_fill_manual(values = c('B (60)' = 'royalblue3', 'LB (16)' = 'steelblue1', 'VUS to LB (49)' = 'steelblue4', 'VUS (56)' = 'grey50', 'VUS to LP (5)' = 'coral3', 'LP (44)' = 'coral', 'P (57)' = 'firebrick3')) + theme(legend.position = c(0.51, 0.5))+ theme(legend.title = element_blank())+ theme(legend.text = element_text(size = 25)) + ggtitle("BRCA1") + theme(plot.title = element_text(size=25, face="italic", hjust = 0.5, vjust = -3))
+
+#TP53:
+# Compute percentages:
+TP53_before$fraction = TP53_before$Count / sum(TP53_before$Count)
+TP53_after_detail$fraction = TP53_after_detail$Count / sum(TP53_after_detail$Count)
+
+# Compute the cumulative percentages (top of each rectangle):
+TP53_before$ymax = cumsum(TP53_before$fraction)
+TP53_after_detail$ymax = cumsum(TP53_after_detail$fraction)
+
+# Compute the bottom of each rectangle:
+TP53_before$ymin = c(0, head(TP53_before$ymax, n=-1))
+TP53_after_detail$ymin = c(0, head(TP53_after_detail$ymax, n=-1))
+
+#order the legend entries same as dataframes:
+TP53_before$Classification <- factor(TP53_before$Classification, levels = unique(TP53_before$Classification))
+TP53_after_detail$Classification <- factor(TP53_after_detail$Classification, levels = unique(TP53_after_detail$Classification))
+
+TP53_before_plot = ggplot(TP53_before, aes(ymax=ymax, ymin=ymin, xmax=8, xmin=7, fill = Classification)) +  geom_rect() + coord_polar(theta="y")+ xlim(c(3, 8)) + theme_void() + scale_color_manual(values = c('B (1)' = 'royalblue3', 'LB (30)' = 'steelblue1', 'VUS (166)' = 'grey50', 'LP (60)' = 'coral', 'P (37)' = 'firebrick3')) + scale_fill_manual(values = c('B (1)' = 'royalblue3', 'LB (30)' = 'steelblue1', 'VUS (166)' = 'grey50', 'LP (60)' = 'coral', 'P (37)' = 'firebrick3')) + theme(legend.position = c(0.51, 0.5))+ theme(legend.title = element_blank())+ theme(legend.text = element_text(size = 25)) + ggtitle("TP53 classifications") + theme(plot.title = element_text(size=25, face="italic", hjust = 0.5, vjust = -3))
+
+TP53_after_deets_plot = ggplot(TP53_after_detail, aes(ymax=ymax, ymin=ymin, xmax=8, xmin=7, fill = Classification)) +  geom_rect() + coord_polar(theta="y")+ xlim(c(3, 8)) + theme_void() + scale_color_manual(values = c('B (1)' = 'royalblue3', 'LB (30)' = 'steelblue1', 'VUS to LB (85)' = 'steelblue4', 'VUS (51)' = 'grey50', 'VUS to LP (30)' = 'coral3', 'LP (60)' = 'coral', 'P (37)' = 'firebrick3')) + scale_fill_manual(values = c('B (1)' = 'royalblue3', 'LB (30)' = 'steelblue1', 'VUS to LB (85)' = 'steelblue4', 'VUS (51)' = 'grey50', 'VUS to LP (30)' = 'coral3', 'LP (60)' = 'coral', 'P (37)' = 'firebrick3')) + theme(legend.position = c(0.51, 0.5))+ theme(legend.title = element_blank())+ theme(legend.text = element_text(size = 25)) + ggtitle("TP53") + theme(plot.title = element_text(size=25, face="italic", hjust = 0.5, vjust = -3))
+
+#PTEN:
+# Compute percentages:
+PTEN_before$fraction = PTEN_before$Count / sum(PTEN_before$Count)
+PTEN_after_detail$fraction = PTEN_after_detail$Count / sum(PTEN_after_detail$Count)
+
+# Compute the cumulative percentages (top of each rectangle):
+PTEN_before$ymax = cumsum(PTEN_before$fraction)
+PTEN_after_detail$ymax = cumsum(PTEN_after_detail$fraction)
+
+# Compute the bottom of each rectangle:
+PTEN_before$ymin = c(0, head(PTEN_before$ymax, n=-1))
+PTEN_after_detail$ymin = c(0, head(PTEN_after_detail$ymax, n=-1))
+
+#order the legend entries same as dataframes:
+PTEN_before$Classification <- factor(PTEN_before$Classification, levels = unique(PTEN_before$Classification))
+PTEN_after_detail$Classification <- factor(PTEN_after_detail$Classification, levels = unique(PTEN_after_detail$Classification))
+
+PTEN_before_plot = ggplot(PTEN_before, aes(ymax=ymax, ymin=ymin, xmax=8, xmin=7, fill = Classification)) +  geom_rect() + coord_polar(theta="y")+ xlim(c(3, 8)) + theme_void() + scale_color_manual(values = c('B (0)' = 'royalblue3', 'LB (2)' = 'steelblue1', 'VUS (48)' = 'grey50', 'LP (17)' = 'coral', 'P (14)' = 'firebrick3')) + scale_fill_manual(values = c('B (0)' = 'royalblue3', 'LB (2)' = 'steelblue1', 'VUS (48)' = 'grey50', 'LP (17)' = 'coral', 'P (14)' = 'firebrick3')) + theme(legend.position = c(0.51, 0.5))+ theme(legend.title = element_blank())+ theme(legend.text = element_text(size = 25)) + ggtitle("PTEN classifications") + theme(plot.title = element_text(size=25, face="italic", hjust = 0.5, vjust = -3))
+
+PTEN_after_deets_plot = ggplot(PTEN_after_detail, aes(ymax=ymax, ymin=ymin, xmax=8, xmin=7, fill = Classification)) +  geom_rect() + coord_polar(theta="y")+ xlim(c(3, 8)) + theme_void() + scale_color_manual(values = c('B (0)' = 'royalblue3', 'LB (2)' = 'steelblue1', 'VUS to LB (0)' = 'steelblue4', 'VUS (41)' = 'grey50', 'VUS to LP (7)' = 'coral3', 'LP (17)' = 'coral', 'P (14)' = 'firebrick3')) + scale_fill_manual(values = c('B (0)' = 'royalblue3', 'LB (2)' = 'steelblue1', 'VUS to LB (0)' = 'steelblue4', 'VUS (41)' = 'grey50', 'VUS to LP (7)' = 'coral3', 'LP (17)' = 'coral', 'P (14)' = 'firebrick3')) + theme(legend.position = c(0.51, 0.5))+ theme(legend.title = element_blank())+ theme(legend.text = element_text(size = 25)) + ggtitle("PTEN") + theme(plot.title = element_text(size=25, face="italic", hjust = 0.5, vjust = -3))
+
+Figure_4 = ggarrange(BRCA1_before_plot, TP53_before_plot, PTEN_before_plot, BRCA1_after_deets_plot, TP53_after_deets_plot, PTEN_after_deets_plot, nrow = 2, ncol = 3, labels = c('A', 'C', 'E', 'B', 'D', 'F'), font.label = list(size = 28))
+
+ggsave("Figure_4.pdf", plot = Figure_4, dpi = 300, width = 18, height = 12, units = c("in"))
+```
+
+Figure 5:
+```{r}
+#Generate a donut plots of ACMG73 OddsPath calculations
+#Compute percentages
+ACMG73_B_oddspath$fraction = ACMG73_B_oddspath$Count / sum(ACMG73_B_oddspath$Count)
+ACMG73_P_oddspath$fraction = ACMG73_P_oddspath$Count / sum(ACMG73_P_oddspath$Count)
+
+
+#Compute the cumulative percentages (top of each rectangle)
+ACMG73_B_oddspath$ymax = cumsum(ACMG73_B_oddspath$fraction)
+ACMG73_P_oddspath$ymax = cumsum(ACMG73_P_oddspath$fraction)
+
+#Compute the bottom of each rectangle
+ACMG73_B_oddspath$ymin = c(0, head(ACMG73_B_oddspath$ymax, n=-1))
+ACMG73_P_oddspath$ymin = c(0, head(ACMG73_P_oddspath$ymax, n=-1))
+
+#Order the legend entries:
+ACMG73_B_oddspath$Code <- factor(ACMG73_B_oddspath$Code, levels = c("BS3_supporting (5)", "BS3_moderate (16)", "BS3_strong (39)", "BS3_very_strong (1)" , "None (12)"))
+ACMG73_P_oddspath$Code <- factor(ACMG73_P_oddspath$Code, levels = c("PS3_supporting (13)", "PS3_moderate (22)", "PS3_strong (21)", "PS3_very_strong (1)" , "None (16)"))
+
+#Make the plot
+ACMG73_B_oddspath_plot = ggplot(ACMG73_B_oddspath, aes(ymax=ymax, ymin=ymin, xmax=7, xmin=6, fill=Code)) + geom_rect() + coord_polar(theta="y")+ xlim(c(3, 7)) + theme_void() + scale_color_manual(values = c('BS3_very_strong (1)' = '#08519c', 'BS3_strong (39)' = '#3182bd', 'BS3_moderate (16)' = '#6baed6', 'BS3_supporting (5)' = '#bdd7e7', 'None (12)' = 'grey70'))+ scale_fill_manual(values = c('BS3_very_strong (1)' = '#08519c', 'BS3_strong (39)' = '#3182bd', 'BS3_moderate (16)' = '#6baed6', 'BS3_supporting (5)' = '#bdd7e7', 'None (12)' = 'grey70')) + theme(legend.position = c(0.53, 0.50), legend.title = element_blank(), legend.text = element_text(size = 18), legend.key.size = unit(3, 'lines'))
+
+ACMG73_P_oddspath_plot = ggplot(ACMG73_P_oddspath, aes(ymax=ymax, ymin=ymin, xmax=7, xmin=6, fill=Code)) + geom_rect() + coord_polar(theta="y")+ xlim(c(3, 7)) + theme_void() + scale_color_manual(values = c('PS3_very_strong (1)' = '#a50f15', 'PS3_strong (21)' = '#de2d26', 'PS3_moderate (22)' = '#fb6a4a', 'PS3_supporting (13)' = '#fcae91', 'None (16)' = 'grey70'))+ scale_fill_manual(values = c('PS3_very_strong (1)' = '#a50f15', 'PS3_strong (21)' = '#de2d26', 'PS3_moderate (22)' = '#fb6a4a', 'PS3_supporting (13)' = '#fcae91', 'None (16)' = 'grey70')) + theme(legend.position = c(0.53, 0.50), legend.title = element_blank(), legend.text = element_text(size = 18), legend.key.size = unit(3, 'lines'))
+
+Figure_5 = ggarrange(ACMG73_P_oddspath_plot, ACMG73_B_oddspath_plot, nrow = 1, ncol = 2, labels = c("A.", "B."), font.label = list(size = 25))
+Figure_5
+ggsave("Figure_5.pdf", plot = Figure_5, dpi = 300, height = 7, width = 14)
+```
+
+
+```{r}
+#install.packages("RColorBrewer")
+display.brewer.all(colorblindFriendly = TRUE)
+```
+
+
+
+
+
+
+
